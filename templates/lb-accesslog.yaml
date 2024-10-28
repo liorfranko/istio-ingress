@@ -1,0 +1,71 @@
+{{- range $lbName, $lb := .Values.loadBalancers }}
+{{- if $lb.enabled }}
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: access-logs-{{ $lbName }}
+spec:
+  workloadSelector:
+    labels:
+      istio: {{ $lbName }}
+  configPatches:
+  - applyTo: NETWORK_FILTER
+    match:
+      context: GATEWAY
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: MERGE
+      value:
+        typed_config:
+          "@type": "type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager"
+          access_log:
+          - name: envoy.access_loggers.file
+            typed_config:
+              "@type": "type.googleapis.com/envoy.extensions.access_loggers.file.v3.FileAccessLog"
+              path: /dev/stdout
+              "logFormat": {
+                  "jsonFormat": {
+                      "authority": "%REQ(:AUTHORITY)%",
+                      "bytes_received": "%BYTES_RECEIVED%",
+                      "bytes_sent": "%BYTES_SENT%",
+                      "connection_termination_details": "%CONNECTION_TERMINATION_DETAILS%",
+                      "downstream_local_address": "%DOWNSTREAM_LOCAL_ADDRESS%",
+                      "downstream_remote_address": "%DOWNSTREAM_REMOTE_ADDRESS%",
+                      "duration": "%DURATION%",
+                      "method": "%REQ(:METHOD)%",
+                      "path": "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%",
+                      "protocol": "%PROTOCOL%",
+                      "request_id": "%REQ(X-REQUEST-ID)%",
+                      "requested_server_name": "%REQUESTED_SERVER_NAME%",
+                      "response_code": "%RESPONSE_CODE%",
+                      "response_code_details": "%RESPONSE_CODE_DETAILS%",
+                      "response_flags": "%RESPONSE_FLAGS%",
+                      "route_name": "%ROUTE_NAME%",
+                      "start_time": "%START_TIME%",
+                      "upstream_cluster": "%UPSTREAM_CLUSTER%",
+                      "upstream_host": "%UPSTREAM_HOST%",
+                      "upstream_local_address": "%UPSTREAM_LOCAL_ADDRESS%",
+                      "upstream_service_time": "%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%",
+                      "upstream_transport_failure_reason": "%UPSTREAM_TRANSPORT_FAILURE_REASON%",
+                      "user_agent": "%REQ(USER-AGENT)%",
+                      "content_length": "%REQ(CONTENT-LENGTH)%",
+                      "content_type": "%REQ(CONTENT-TYPE)%",
+                      "accept_encoding": "%REQ(ACCEPT-ENCODING)%",
+                      "x_forwarded_for": "%REQ(X-FORWARDED-FOR)%",
+                      "referer": "%REQ(REFERER)%",
+                      "accept_language": "%REQ(ACCEPT-LANGUAGE)%",
+                      "x_envoy_external_address": "%REQ(X-ENVOY-EXTERNAL-ADDRESS)%",
+                      "resp_x_forwarded_for": "%RESP(X-FORWARDED-FOR)%",
+                      "resp_accept_language": "%RESP(ACCEPT-LANGUAGE)%",
+                      "resp_content_length": "%RESP(CONTENT-LENGTH)%",
+                      "resp_sonic_request_id": "%RESP(SONIC-REQUEST-ID)%",
+                      "resp_sonic_random_seed": "%RESP(SONIC-RANDOM-SEED)%",
+                      "resp_server": "%RESP(SERVER)%"
+                  }
+                }
+{{- end }}
+{{- end }}

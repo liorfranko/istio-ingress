@@ -1,0 +1,24 @@
+{{- range $lbName, $lb := .Values.loadBalancers }}
+{{- if $lb.enabled }}
+{{- $loadBalancerLabels := (include "loadBalancerLabels" (dict "root" $ "lbName" $lbName)) }}
+{{- $commonLBLabels := (include "commonLBLabels" (dict "root" $ "lbName" $lbName)) }}
+{{- $loadBalancerServiceAccountName := (include "loadBalancerServiceAccountName" (dict "root" $ "lbName" $lbName)) }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $loadBalancerServiceAccountName }}
+  labels: {{- $commonLBLabels | nindent 4 }}
+{{ $loadBalancerLabels | indent 4 -}}
+{{- if $lb.deployment.annotations }}
+  annotations: {{ toYaml $lb.deployment.annotations  | nindent 4 }}
+{{- end }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "watch", "list"]
+{{- if $lb.role.additionalRules }}
+{{ toYaml $lb.role.additionalRules }}
+{{- end }}
+{{- end }}
+{{- end }}

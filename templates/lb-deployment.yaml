@@ -1,0 +1,102 @@
+{{- range $lbName, $lb := .Values.loadBalancers }}
+{{- if $lb.enabled }}
+{{- $loadBalancerName := $lbName -}}
+{{- $loadBalancerLabels := (include "loadBalancerLabels" (dict "root" $ "lbName" $lbName)) }}
+{{- $lbPodAnnotations := (include "lbPodAnnotations" (dict "root" $ "lbName" $lbName)) -}}
+{{- $lbPodLabels := include "lbPodLabels" . -}}
+{{- $lbPodAntiAffinity := (include "lbPodAntiAffinity" (dict "root" $ "lbName" $lbName)) }}
+{{- $commonLBLabels := (include "commonLBLabels" (dict "root" $ "lbName" $lbName)) }}
+{{- $defaultLBContainerArgs := (include "defaultLBContainerArgs" (dict "root" $ "lbName" $lbName)) -}}
+{{- $defaultLBContainerEnv := (include "defaultLBContainerEnv" (dict "root" $ "lbName" $lbName)) -}}
+{{- $defaultLBContainerPorts := (include "defaultLBContainerPorts" (dict "root" $ "lbName" $lbName)) -}}
+{{- $defaultLBContainerVolumeMounts := (include "defaultLBContainerVolumeMounts" (dict "root" $ "lbName" $lbName)) -}}
+{{- $defaultLBContainerVolumes := include "defaultLBContainerVolumes" . -}}
+{{- $defaultDeploymentStrategy := include "defaultDeploymentStrategy" . -}}
+{{- $defaultRolloutStrategy := include "defaultRolloutStrategy" . -}}
+{{- $loadBalancerServiceAccountName := (include "loadBalancerServiceAccountName" (dict "root" $ "lbName" $lbName)) -}}
+{{- $defaultLBImage := (include "defaultLBImage" (dict "root" $ "lbName" $lbName)) -}}
+---
+apiVersion: {{ $lb.deployment.apiVersion }}
+kind: {{ $lb.deployment.kind }}
+metadata:
+  name: {{ $loadBalancerName }}
+  labels: {{ $commonLBLabels | nindent 4 }}
+{{ $loadBalancerLabels | indent 4 -}}
+{{- if $lb.deployment.annotations }}
+  annotations: {{ toYaml $lb.deployment.annotations  | nindent 4 }}
+{{- end }}
+spec:
+  affinity:
+{{ $lbPodAntiAffinity | indent 8 }}
+  {{- if not $lb.autoScaling.enabled }}
+  replicas: {{ $lb.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- $loadBalancerLabels | nindent 6 }}
+{{- if eq "Rollout" $lb.deployment.kind }}
+  strategy:
+    {{- include "defaultRolloutStrategy" . | nindent 4}}
+{{- else }}
+  strategy:
+    {{- include "defaultDeploymentStrategy" . | nindent 4}}
+{{- end }}
+  template:
+    metadata:
+      annotations:
+{{ $lbPodAnnotations | indent 8 }}
+      labels:
+{{ $commonLBLabels | indent 8 }}
+{{ $loadBalancerLabels | indent 8 }}
+{{ $lbPodLabels | indent 8 }}
+    spec:
+      containers:
+        - name: istio-proxy
+          image: {{ $defaultLBImage }}
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests: {{ toYaml $lb.deployment.resources.requests | nindent 14 }}
+            limits: {{ toYaml  $lb.deployment.resources.limits | nindent 14 }}
+  {{- if $lb.deployment.containerArgs }}
+          args: {{ $lb.deployment.containerArgs | nindent 12 }}
+  {{- else }}
+          args: {{- include "defaultLBContainerArgs" (dict "root" $ "lbName" $lbName) | nindent 10 }}
+  {{- end }}
+  {{- if $lb.deployment.containerEnv }}
+          env:  {{ $lb.deployment.containerEnv | nindent 12 }}
+  {{- else }}
+          env:  {{ $defaultLBContainerEnv  | nindent 12 }}
+  {{- end }}
+  {{- if $lb.deployment.containerPorts  }}
+          ports: {{ $lb.deployment.containerPorts | nindent 12 }}
+  {{- else }}
+          ports: {{ $defaultLBContainerPorts | nindent 12 }}
+  {{- end }}
+  {{- if $lb.deployment.volumeMounts  }}
+          volumeMounts: {{ $lb.deployment.volumeMounts | nindent 12 }}
+  {{- else }}
+          volumeMounts: {{ $defaultLBContainerVolumeMounts | nindent 12 }}
+  {{- end }}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      serviceAccount: {{ $loadBalancerServiceAccountName }}
+      serviceAccountName: {{ $loadBalancerServiceAccountName }}
+      terminationGracePeriodSeconds: {{ $lb.deployment.terminationGracePeriodSeconds }}
+  {{- if $lb.deployment.volumes }}
+      volumes: {{ $lb.deployment.volumes | nindent 8 }}
+  {{- else }}
+      volumes: {{ $defaultLBContainerVolumes | nindent 8 }}
+  {{- end }}
+    {{- if $lb.deployment.tolerations }}
+      tolerations: {{ toYaml $lb.deployment.tolerations | nindent 8 }}
+    {{- else }}
+      tolerations:
+      - effect: NoSchedule
+        key: ingress
+        operator: Equal
+        value: "true"
+    {{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,21 @@
+{{- $root := . }}
+{{- range $lbName, $lb := .Values.loadBalancers }}
+{{- if $lb.enabled }}
+{{- $loadBalancerLabels := (include "loadBalancerLabels" (dict "root" $ "lbName" $lbName)) }}
+{{- $commonLBLabels := (include "commonLBLabels" (dict "root" $ "lbName" $lbName)) }}
+---
+apiVersion: {{ $lb.gateway.apiVersion }}
+kind: {{ $lb.gateway.kind }}
+metadata:
+  name: {{ $lbName }}
+spec:
+  selector:
+    istio: {{ $lbName }}
+  servers:
+    - hosts: {{ $root.Values.externalDns }}
+      port:
+        number: 80
+        name: http
+        protocol: HTTP
+  {{- end }}
+  {{- end }}

@@ -1,0 +1,47 @@
+{{- range $lbName, $lb := .Values.loadBalancers }}
+{{- if $lb.enabled }}
+{{- $loadBalancerLabels := (include "loadBalancerLabels" (dict "root" $ "lbName" $lbName)) }}
+{{- $lbPodAnnotations := (include "lbPodAnnotations" (dict "root" $ "lbName" $lbName)) }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ $lbName }}
+  labels:
+    app: {{ $lbName }}
+{{ $loadBalancerLabels | indent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: {{ $lb.deployment.apiVersion }}
+    kind: {{ $lb.deployment.kind }}
+    name: {{ $lbName }}
+  minReplicaCount: {{ $lb.autoScaling.minReplicas }}
+  maxReplicaCount: {{ $lb.autoScaling.maxReplicas }}
+  pollingInterval:  {{ $lb.autoScaling.pollingInterval }}
+  cooldownPeriod:   {{ $lb.autoScaling.cooldownPeriod }}
+  fallback:
+    failureThreshold: {{ $lb.autoScaling.fallback.failureThreshold }}
+    replicas: {{ div $lb.autoScaling.maxReplicas 2 | toString }}
+  advanced:
+    restoreToOriginalReplicaCount: {{ $lb.autoScaling.restoreToOriginalReplicaCount }}
+    horizontalPodAutoscalerConfig:
+      behavior:
+      {{- toYaml $lb.autoScaling.behavior.policies | nindent 8 }}
+  triggers:
+  - type: {{ $lb.autoScaling.scaler.name }}
+  {{- if eq $lb.autoScaling.scaler.name "cpu" "memory" }}
+    metricType: {{ $lb.autoScaling.scaler.metricType }}
+  {{- end }}
+    metadata:
+  {{- with $lb.autoScaling.scaler.metadata }}
+  {{- toYaml . | nindent 6 }}
+  {{- end }}
+  {{- if eq $lb.autoScaling.scaler.name "cpu" "memory" }}
+      value: {{ $lb.autoScaling.scaler.value | quote }}
+  {{- end }}
+  {{- if $lb.autoScaling.additionalTriggers }}
+  {{- with $lb.autoScaling.additionalTriggers }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+  {{- end }}
+{{ end }}
+{{ end }}

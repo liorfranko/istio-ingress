@@ -1,0 +1,147 @@
+externalSubnets: 
+internalSubnets: 
+externalDns: 
+internalDns: 
+securityGroups: 
+certArn:
+loadBalancers:
+  frontend:
+    role:
+      additionalRules: []      
+    serviceAccount:
+      annotations: []  
+    autoScaling:
+      enabled: true
+      maxReplicas: 10
+      minReplicas: 3
+      pollingInterval:  30
+      cooldownPeriod:   300
+      restoreToOriginalReplicaCount: true
+      fallback:
+        failureThreshold: 5
+      behavior:
+        policies:
+          scaleDown:
+            stabilizationWindowSeconds: 300
+            selectPolicy: Max
+            policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+          scaleUp:
+            stabilizationWindowSeconds: 0
+            selectPolicy: Max
+            policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+            - type: Pods
+              value: 4
+              periodSeconds: 15
+      scaler:
+        name: cpu
+        metricType: Utilization
+        value: "50"
+        metadata: {}  
+    gateway:
+      apiVersion: networking.istio.io/v1
+      kind: Gateway
+      defaultSelectorEnabled: true
+      httpsRedirect: false
+      additionalSelectors: {}  
+    deployment:
+      apiVersion: argoproj.io/v1alpha1
+      kind: Rollout
+      logLevel: warn
+      annotations: {}
+      terminationGracePeriodSeconds: 320
+      drainDuration: 240s
+      parentShutdownDuration: 300s
+      strategy: {}
+      # -- Sets of defaults for the LoadBalancer deployment
+      containerArgs: []
+      containerEnv: []
+      containerPorts: []
+      volumeMounts: []
+      volumes: []
+      # -- tolerations for the loadbbalancer deployment
+      tolerations: []
+      # -- Resources for the istio load balancer pods
+      resources:
+        concurrencyMultiplier: 3
+        limits:
+          memory: 1024Mi
+        requests:
+          cpu: "1"
+          memory: 1024Mi  
+    enabled: true
+  backend:
+    enabled: false
+    role:
+      additionalRules: []    
+    serviceAccount:
+      annotations: []      
+    deployment:
+      apiVersion: argoproj.io/v1alpha1
+      kind: Rollout
+      logLevel: warn
+      annotations: {}
+      terminationGracePeriodSeconds: 320
+      drainDuration: 240s
+      parentShutdownDuration: 300s
+      strategy: {}
+      # -- Sets of defaults for the LoadBalancer deployment
+      containerArgs: []
+      containerEnv: []
+      containerPorts: []
+      volumeMounts: []
+      volumes: []
+      # -- tolerations for the loadbbalancer deployment
+      tolerations: []
+      # -- Resources for the istio load balancer pods
+      resources:
+        concurrencyMultiplier: 3
+        limits:
+          memory: 1024Mi
+        requests:
+          cpu: "1"
+          memory: 1024Mi
+    autoScaling:
+      enabled: true
+      maxReplicas: 10
+      minReplicas: 3
+      pollingInterval:  30
+      cooldownPeriod:   300
+      restoreToOriginalReplicaCount: true
+      fallback:
+        failureThreshold: 5
+      behavior:
+        policies:
+          scaleDown:
+            stabilizationWindowSeconds: 300
+            selectPolicy: Max
+            policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+          scaleUp:
+            stabilizationWindowSeconds: 0
+            selectPolicy: Max
+            policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
+            - type: Pods
+              value: 4
+              periodSeconds: 15
+      scaler:
+        name: cpu
+        metricType: Utilization
+        value: "50"
+        metadata: {}  
+    gateway:
+      apiVersion: networking.istio.io/v1
+      kind: Gateway
+      defaultSelectorEnabled: true
+      httpsRedirect: false
+      additionalSelectors: {}            

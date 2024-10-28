@@ -1,0 +1,22 @@
+{{- range $lbName, $lb := .Values.loadBalancers }}
+{{- if $lb.enabled }}
+{{- $commonLBLabels := (include "commonLBLabels" (dict "root" $ "lbName" $lbName)) }}
+{{- $defaultLBServiceAnnotations := (include "defaultLBServiceAnnotations" (dict "root" $ "lbName" $lbName)) }}
+{{- $loadBalancerLabels := (include "loadBalancerLabels" (dict "root" $ "lbName" $lbName)) }}
+{{- $defaultServicePorts := (include "defaultServicePorts" (dict "root" $ "lbName" $lbName)) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations: {{ $defaultLBServiceAnnotations  | nindent 4 }}
+  labels: {{- $commonLBLabels | nindent 4 }}
+  {{ $loadBalancerLabels | nindent 4 }}
+  name: {{ $lbName }}
+spec:
+  ports: {{ $defaultServicePorts | nindent 4 }}
+  selector:
+    istio: {{ $lbName }}
+  sessionAffinity: None
+  type: LoadBalancer
+{{ end }}
+{{- end }}
